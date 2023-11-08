@@ -1,0 +1,15 @@
+#!/bin/sh
+if [ $3 -eq "curl" ]; then
+    curl http://$2
+fi
+if [ $3 -eq "ping" ]; then
+    ping -c 1 -W 3 $2
+fi
+if [ $? -eq 0 ]; then
+    echo "Network is OK."
+    exit 0
+fi
+curl $1
+if [ $? -eq 0 ]; then
+    echo "Login success."
+fi

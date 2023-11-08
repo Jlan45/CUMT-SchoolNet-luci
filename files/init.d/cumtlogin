@@ -1,0 +1,37 @@
+#!/bin/sh /etc/rc.common
+
+# 启动顺序
+START=95
+
+start() {
+    config_load cumtlogin
+
+    local enable=$(uci get cumtlogin.userconfig.enable)
+    if [ "$enable" = "0" ]; then
+        echo "cumtlogin is disabled."
+        exit 0
+    fi
+    local username=$(uci get cumtlogin.userconfig.username)
+    local password=$(uci get cumtlogin.userconfig.password)
+    local nettype=$(uci get cumtlogin.userconfig.nettype)
+    local domain=$(uci get cumtlogin.userconfig.domain)
+    local testtime=$(uci get cumtlogin.userconfig.testtime)
+    local testfunc=$(uci get cumtlogin.userconfig.testfunc)
+    local loginurl="http://10.2.5.251:801/eportal/?c=Portal&a=login&login_method=1&user_account=${username}${nettype}&user_password=${password}"
+
+    curl $loginurl
+    /usr/sbin/cumtlogin  $loginurl $domain >/tmp/log
+    grep "/usr/sbin/cumtlogin" /etc/crontabs/root
+    if [ $? -eq 0 ]; then
+        sed -i '/\/usr\/sbin\/cumtlogin/d' /etc/crontabs/root >/etc/crontabs/root
+    fi
+    echo "* */$testtime * * * /usr/sbin/cumtlogin $loginurl $domain $testfunc >/tmp/cumtloginlog" >> /etc/crontabs/root
+}
+
+stop() {
+    # 清理程序产生的内容
+    exit 0
+}
+restart() {
+    start
+}

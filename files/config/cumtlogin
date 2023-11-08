@@ -1,0 +1,8 @@
+config server 'userconfig'
+		option enable '1'
+        option password 'password'
+        option domain 'www.baidu.com'
+        option testtime '5'
+        option testfunc 'ping'
+        option nettype ''
+        option username '00000000'
