@@ -1,0 +1,75 @@
+name: Build IPK Package
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up OpenWrt SDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses5-dev libncursesw5-dev \
+            zlib1g-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3
+
+          # Download OpenWrt SDK (using 23.05.5 for better compatibility)
+          wget https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          tar -xJf openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+          mv openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64 openwrt-sdk
+
+      - name: Copy package to SDK
+        run: |
+          mkdir -p openwrt-sdk/package/cumtlogin
+          cp -r ./* openwrt-sdk/package/cumtlogin/ || true
+          ls -la openwrt-sdk/package/cumtlogin/
+
+      - name: Build package
+        run: |
+          cd openwrt-sdk
+
+          # Update feeds
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+          # Configure
+          make defconfig
+
+          # Build the package
+          make package/cumtlogin/compile V=s
+
+      - name: Collect IPK files
+        run: |
+          mkdir -p artifacts
+          find openwrt-sdk/bin/packages/ -name "cumtlogin*.ipk" -exec cp {} artifacts/ \;
+          ls -lh artifacts/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cumtlogin-ipk
+          path: artifacts/*.ipk
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/*.ipk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
