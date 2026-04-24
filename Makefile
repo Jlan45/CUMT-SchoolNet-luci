@@ -1,6 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=cumtlogin
+# PKG_VERSION is set automatically by CI from the git tag (e.g. v1.2.3 -> 1.2.3).
+# When building manually outside CI, update this value to match the desired release.
 PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
 
