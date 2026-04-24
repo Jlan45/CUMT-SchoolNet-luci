@@ -22,7 +22,9 @@ nettype:value("", translate("SchoolNet"))
 
 domain = s:option(Value, "domain", translate("测试主机"))
 
-testtime = s:option(Value, "testtime", translate("测试时间"))
+testtime = s:option(Value, "testtime", translate("测试时间(小时)"))
+testtime.datatype = "range(1,24)"
+testtime.rmempty = false
 
 testfunc = s:option(ListValue, "testfunc", translate("测试方法"))
 testfunc:value("ping", translate("ping"))
@@ -30,7 +32,7 @@ testfunc:value("curl", translate("curl"))
 
 local apply = luci.http.formvalue("cbi.apply")
 if apply then
-    io.popen("/etc/init.d/cumtlogin restart > /dev/null &")
+    luci.sys.call("/etc/init.d/cumtlogin restart > /dev/null 2>&1 &")
 end
 
 return m

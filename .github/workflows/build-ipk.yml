@@ -13,6 +13,10 @@ on:
       - master
   workflow_dispatch:
 
+env:
+  OPENWRT_SDK_VERSION: "23.05.5"
+  OPENWRT_SDK_NAME: "openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,10 +31,29 @@ jobs:
           sudo apt-get install -y build-essential libncurses5-dev libncursesw5-dev \
             zlib1g-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3
 
-          # Download OpenWrt SDK (using 23.05.5 for better compatibility)
-          wget https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
-          tar -xJf openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
-          mv openwrt-sdk-23.05.5-x86-64_gcc-12.3.0_musl.Linux-x86_64 openwrt-sdk
+      - name: Cache OpenWrt SDK
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: openwrt-sdk
+          key: openwrt-sdk-${{ env.OPENWRT_SDK_VERSION }}
+
+      - name: Download OpenWrt SDK
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          wget https://downloads.openwrt.org/releases/${{ env.OPENWRT_SDK_VERSION }}/targets/x86/64/${{ env.OPENWRT_SDK_NAME }}.tar.xz
+          tar -xJf ${{ env.OPENWRT_SDK_NAME }}.tar.xz
+          mv ${{ env.OPENWRT_SDK_NAME }} openwrt-sdk
+
+      - name: Set package version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            PKG_VER="${GITHUB_REF_NAME#v}"
+          else
+            PKG_VER="$(git describe --tags --always --dirty 2>/dev/null || echo '0.0.0')"
+          fi
+          sed -i "s/^PKG_VERSION:=.*/PKG_VERSION:=${PKG_VER}/" Makefile
+          echo "PKG_VERSION=${PKG_VER}" >> $GITHUB_ENV
 
       - name: Copy package to SDK
         run: |
@@ -66,7 +89,7 @@ jobs:
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*.ipk
           draft: false

@@ -1,15 +1,46 @@
 #!/bin/sh
-if [ "$3" = "curl" ]; then
-    curl http://$2
-fi
-if [ "$3" = "ping" ]; then
-    ping -c 1 -W 3 $2
-fi
-if [ $? -eq 0 ]; then
-    echo "Network is OK."
+
+# Read configuration from UCI
+USERNAME=$(uci get cumtlogin.userconfig.username 2>/dev/null)
+PASSWORD=$(uci get cumtlogin.userconfig.password 2>/dev/null)
+NETTYPE=$(uci get cumtlogin.userconfig.nettype 2>/dev/null)
+DOMAIN=$(uci get cumtlogin.userconfig.domain 2>/dev/null)
+TESTFUNC=$(uci get cumtlogin.userconfig.testfunc 2>/dev/null)
+
+LOGINURL="http://10.2.5.251:801/eportal/?c=Portal&a=login&login_method=1&user_account=${USERNAME}${NETTYPE}&user_password=${PASSWORD}"
+
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+# Check network connectivity
+check_network() {
+    if [ "$TESTFUNC" = "curl" ]; then
+        curl -s --max-time 5 "http://$DOMAIN" >/dev/null 2>&1
+    elif [ "$TESTFUNC" = "ping" ]; then
+        ping -c 1 -W 3 "$DOMAIN" >/dev/null 2>&1
+    else
+        ping -c 1 -W 3 "$DOMAIN" >/dev/null 2>&1
+    fi
+}
+
+if check_network; then
+    echo "[$TIMESTAMP] Network is OK."
     exit 0
 fi
-curl $1
-if [ $? -eq 0 ]; then
-    echo "Login success."
-fi
+
+echo "[$TIMESTAMP] Network check failed, attempting login..."
+
+# Retry up to 3 times
+MAX_RETRIES=3
+i=1
+while [ $i -le $MAX_RETRIES ]; do
+    if curl -s --max-time 10 "$LOGINURL" >/dev/null 2>&1; then
+        echo "[$TIMESTAMP] Login success on attempt $i."
+        exit 0
+    fi
+    echo "[$TIMESTAMP] Login attempt $i failed."
+    i=$((i + 1))
+    [ $i -le $MAX_RETRIES ] && sleep 5
+done
+
+echo "[$TIMESTAMP] All $MAX_RETRIES login attempts failed."
+exit 1
