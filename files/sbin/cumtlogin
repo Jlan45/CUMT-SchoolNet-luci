@@ -1,8 +1,8 @@
 #!/bin/sh
-if [ $3 -eq "curl" ]; then
+if [ "$3" = "curl" ]; then
     curl http://$2
 fi
-if [ $3 -eq "ping" ]; then
+if [ "$3" = "ping" ]; then
     ping -c 1 -W 3 $2
 fi
 if [ $? -eq 0 ]; then

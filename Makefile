@@ -35,4 +35,7 @@ define Package/cumtlogin/install
     $(INSTALL_BIN) ./files/sbin/cumtlogin $(1)/usr/sbin/cumtlogin
 endef
 
-$(eval$(call BuildPackage,$(PKG_NAME)))
+define Build/Compile
+endef
+
+$(eval $(call BuildPackage,cumtlogin))
